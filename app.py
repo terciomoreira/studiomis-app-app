@@ -5,9 +5,10 @@ from supabase import create_client, Client
 from streamlit_calendar import calendar
 
 # --- CONFIGURAÇÃO ---
+# --- CONFIGURAÇÃO ---
 SUPABASE_URL = "https://aqurshrylulujbrxrhvn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxdXJzaHJ5bHVsdWpicnhyaHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTIzMTEsImV4cCI6MjA5MzY2ODMxMX0.mzy4S9b3H-PUt7nKLoH4k8ipUsXjj5CVWJbB8ZEiPJ0"
-supabase: Client = create_client(sb_publishable_RIyqgEmKL0STqT7p9-30Lg_cHXJ3ueC)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Studio Miss SaaS", layout="wide")
 
