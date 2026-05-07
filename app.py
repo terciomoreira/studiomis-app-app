@@ -103,7 +103,7 @@ with tab3:
     df_rel = carregar_dados()
     if not df_rel.empty:
         # Se for o dono (ex: admin@studiomiss.com), vê tudo. Se não, filtra por ele.
-        is_admin = st.session_state.user.email == "teu_email_gestor@gmail.com"
+        is_admin = st.session_state.user.email == "emilygisto@gmail.com"
 
         if not is_admin:
             df_rel = df_rel[df_rel['criado_por']
