@@ -20,6 +20,7 @@ if 'user' not in st.session_state:
     st.session_state.user = None
 
 # --- SIDEBAR LOGIN ---
+# --- SIDEBAR LOGIN (Substitui da linha 23 até à 53) ---
 with st.sidebar:
     try:
         st.image('banner.png')
@@ -33,19 +34,15 @@ with st.sidebar:
         if st.button("Confirmar"):
             try:
                 if opcao == "Criar Conta":
-                    # Tenta criar a conta
-                    supabase.auth.sign_up(
-                        {"email": email_input, "password": senha_input})
+                    res = supabase.auth.sign_up({"email": email_input, "password": senha_input})
                     st.success("Conta criada! Mude para 'Login' e entre.")
                 else:
-                    # Tenta entrar
-                    res = supabase.auth.sign_in_with_password(
-                        {"email": email_input, "password": senha_input})
-                    st.session_state.user = res.user
-                    st.rerun()
+                    res = supabase.auth.sign_in_with_password({"email": email_input, "password": senha_input})
+                    if res.user:
+                        st.session_state.user = res.user
+                        st.rerun()
             except Exception as e:
-                # Se der erro, mostra ao utilizador o que aconteceu
-                st.error(f"Erro no acesso: Verifique se os dados estão corretos.")
+                st.error(f"Erro Real: {e}") 
     else:
         st.write(f"Conectado: **{st.session_state.user.email}**")
         if st.button("Sair"):
