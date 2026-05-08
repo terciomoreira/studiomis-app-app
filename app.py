@@ -29,12 +29,14 @@ with st.sidebar:
             try:
                 if opcao == "Criar Conta":
                     supabase.auth.sign_up({"email": email_i, "password": senha_i})
-                    st.success("Conta criada! Mude para 'Login'.")
+                    st.success("Conta criada! Mude para 'Login' e entre.")
                 else:
                     res = supabase.auth.sign_in_with_password({"email": email_i, "password": senha_i})
-                    st.session_state.user = res.user
-                    st.rerun()
-            except: st.error("Erro no acesso.")
+                    if res.user:
+                        st.session_state.user = res.user
+                        st.rerun()
+            except Exception as e:
+                st.error(f"Erro: {e}") # Isso vai mostrar o motivo real no ecrã
     else:
         st.write(f"Conectado: **{st.session_state.user.email}**")
         if st.button("Sair"):
@@ -51,8 +53,10 @@ st.session_state.is_admin = st.session_state.user.email in LISTA_ADMINS
 
 # --- FUNÇÕES ---
 def ler_dados():
-    res = supabase.table("agendamentos").select("*").execute()
-    return pd.DataFrame(res.data)
+    try:
+        res = supabase.table("agendamentos").select("*").execute()
+        return pd.DataFrame(res.data)
+    except: return pd.DataFrame()
 
 # --- INTERFACE ---
 tabs = st.tabs(["📅 Agenda", "📝 Registar Serviço", "📊 Relatórios", "⚙️ Admin"])
@@ -60,7 +64,7 @@ tabs = st.tabs(["📅 Agenda", "📝 Registar Serviço", "📊 Relatórios", "�
 with tabs[0]: # Agenda
     df = ler_dados()
     if not df.empty:
-        evs = [{"title": f"{r['cliente']} ({r['colab']}) - {r['hora']}", "start": r['data_hora']} for _, r in df.iterrows()]
+        evs = [{"title": f"{r['cliente']} ({r['colab']}) - {r.get('hora', '')}", "start": r['data_hora']} for _, r in df.iterrows()]
         calendar(events=evs, options={"headerToolbar": {"right": "dayGridMonth,timeGridWeek"}})
 
 with tabs[1]: # Registar
@@ -71,12 +75,11 @@ with tabs[1]: # Registar
         
         c3, c4 = st.columns(2)
         data_atend = c3.date_input("Data")
-        hora_atend = c4.text_input("Hora (Ex: 14:30)") # Campo de texto para hora
+        hora_atend = c4.text_input("Hora (Ex: 14:30)")
         
-        valor_total = st.number_input("Valor do Serviço (€)", min_value=0.0, step=0.50)
+        valor_total = st.number_input("Valor do Serviço (€)", min_value=0.0)
         
         if st.form_submit_button("Guardar Registro"):
-            # CÁLCULO CONTABILÍSTICO (70% Colaborador)
             comissao = round(valor_total * 0.70, 2)
             liquido = round(valor_total - comissao, 2)
             
@@ -85,29 +88,21 @@ with tabs[1]: # Registar
                 "comissao": comissao, "liquido": liquido, "data_hora": str(data_atend),
                 "hora": hora_atend, "criado_por": st.session_state.user.email
             }).execute()
-            st.success(f"Registado! Comissão: {comissao}€ | Caixa: {liquido}€")
+            st.success(f"Registado! Comissão (70%): {comissao}€ | Caixa: {liquido}€")
 
-with tabs[2]: # Relatórios (Visão do Colaborador)
-    df_col = ler_dados()
-    if not df_col.empty:
+with tabs[2]: # Relatórios
+    df_rel = ler_dados()
+    if not df_rel.empty:
         if not st.session_state.is_admin:
-            df_col = df_col[df_col['criado_por'] == st.session_state.user.email]
-        
-        st.write("### Meus Ganhos")
-        st.dataframe(df_col[['data_hora', 'hora', 'cliente', 'valor', 'comissao']], use_container_width=True)
-        st.metric("Minha Comissão Total", f"{df_col['comissao'].sum():.2f}€")
+            df_rel = df_rel[df_rel['criado_por'] == st.session_state.user.email]
+        st.dataframe(df_rel, use_container_width=True)
+        st.metric("Minha Comissão", f"{df_rel['comissao'].sum():.2f}€")
 
-with tabs[3]: # Admin (Visão Contabilística)
+with tabs[3]: # Admin
     if st.session_state.is_admin:
         df_adm = ler_dados()
         if not df_adm.empty:
-            st.write("### 👑 Fechamento de Caixa - Contabilidade")
-            st.dataframe(df_adm, use_container_width=True)
-            
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Faturação Bruta", f"{df_adm['valor'].sum():.2f}€")
-            c2.metric("Total Comissões (70%)", f"{df_adm['comissao'].sum():.2f}€")
-            c3.metric("Total Líquido Caixa", f"{df_adm['liquido'].sum():.2f}€")
-            
+            st.write("### Fechamento Contabilístico")
+            st.metric("Total Líquido Caixa", f"{df_adm['liquido'].sum():.2f}€")
             csv = df_adm.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Baixar Planilha para Contabilidade", data=csv, file_name="fechamento_studio_miss.csv", mime="text/csv")
+            st.download_button("📥 Baixar Excel", data=csv, file_name="studio_miss.csv", mime="text/csv")
