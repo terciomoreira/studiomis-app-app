@@ -98,11 +98,39 @@ with tabs[2]: # Relatórios
         st.dataframe(df_rel, use_container_width=True)
         st.metric("Minha Comissão", f"{df_rel['comissao'].sum():.2f}€")
 
-with tabs[3]: # Admin
+with tabs[3]:  # Admin
     if st.session_state.is_admin:
+        st.subheader("👑 Painel de Gestão - Studio Miss")
         df_adm = ler_dados()
+        
         if not df_adm.empty:
             st.write("### Fechamento Contabilístico")
             st.metric("Total Líquido Caixa", f"{df_adm['liquido'].sum():.2f}€")
+            
+            # EXIBIR A TABELA COMPLETA COM OS IDs
+            st.dataframe(df_adm, use_container_width=True)
+
+            # BOTÃO PARA BAIXAR EXCEL
             csv = df_adm.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Baixar Excel", data=csv, file_name="studio_miss.csv", mime="text/csv")
+            st.download_button("📥 Baixar Excel para Contabilidade",
+                               data=csv, file_name="fechamento_studio_miss.csv", mime="text/csv")
+
+            st.divider()
+            
+            # ÁREA DE ELIMINAÇÃO
+            st.warning("⚠️ Zona de Exclusão")
+            id_del = st.number_input("Introduzir o ID (número) do serviço para apagar:", min_value=0, step=1)
+            
+            if st.button("Eliminar Permanentemente"):
+                if id_del > 0:
+                    try:
+                        # Comando que apaga no banco de dados Supabase
+                        supabase.table("agendamentos").delete().eq("id", id_del).execute()
+                        st.success(f"Serviço {id_del} apagado com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao apagar: {e}")
+                else:
+                    st.info("Introduza um ID válido (o número que aparece na primeira coluna da tabela).")
+        else:
+            st.info("Ainda não existem dados registados para exibição.")
