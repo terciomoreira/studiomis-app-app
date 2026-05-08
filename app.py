@@ -4,8 +4,8 @@ from PIL import Image
 from supabase import create_client, Client
 from streamlit_calendar import calendar
 
-# --- CONFIGURAÇÃO ---
-SUPABASE_URL = "https://supabase.co"
+# --- CONFIGURAÇÃO CORRIGIDA ---
+SUPABASE_URL = "https://aqurshrylulujbrxrhvn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxdXJzaHJ5bHVsdWpicnhyaHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTIzMTEsImV4cCI6MjA5MzY2ODMxMX0.mzy4S9b3H-PUt7nKLoH4k8ipUsXjj5CVWJbB8ZEiPJ0"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
