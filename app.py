@@ -109,22 +109,37 @@ with tabs[3]: # Perfil
         st.success("Atualizado!")
 
 if st.session_state.is_admin:
-    with tabs[4]: # Admin
-        st.subheader("Painel Master")
-        # Seletor de Cores Dinâmico
-        with st.expander("🎨 Configurar Cores"):
-            df_adm = ler_dados()
-            if not df_adm.empty:
-                colabs_unicas = df_adm['colab'].unique()
-                sel_c = st.selectbox("Colaborador", colabs_unicas)
-                cor_c = st.color_picker("Escolher Cor", "#F8BBD0")
-                if st.button("Guardar Cor"):
-                    supabase.table("configuracoes_cores").upsert({"colab": sel_c, "cor_hex": cor_c}).execute()
-                    st.rerun()
+    with tabs: # Admin
+        st.subheader("👑 Painel de Gestão Master")
         
+        # --- TABELA DE CORES (O QUE TU PEDISTE) ---
+        with st.expander("🎨 Gestão da Tabela de Cores"):
+            st.write("Define a cor para cada colaboradora aqui:")
+            c1, c2, c3 = st.columns([2,1,1])
+            
+            nome_colab = c1.text_input("Nome da Colaboradora (Exato)")
+            cor_escolhida = c2.color_picker("Escolher Cor", "#F8BBD0")
+            
+            if c3.button("Gravar Cor"):
+                if nome_colab:
+                    supabase.table("configuracoes_cores").upsert({
+                        "colab": nome_colab, 
+                        "cor_hex": cor_escolhida
+                    }).execute()
+                    st.success(f"Cor de {nome_colab} guardada!")
+                    st.rerun()
+                else: st.error("Escreve o nome!")
+
+        # Exibição da Tabela Principal
+        df_adm = ler_dados()
         if not df_adm.empty:
+            st.write("### Produção Detalhada")
+            # Aplica as cores da tabela que criámos
             st.dataframe(df_adm.style.apply(aplicar_estilo_dinamico, axis=1), use_container_width=True)
+            
+            # Botão de Eliminar
+            st.divider()
             id_del = st.number_input("ID para eliminar", min_value=0, step=1)
-            if st.button("Eliminar"):
+            if st.button("Eliminar Permanentemente"):
                 supabase.table("agendamentos").delete().eq("id", id_del).execute()
                 st.rerun()
