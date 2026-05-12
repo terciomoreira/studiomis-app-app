@@ -4,7 +4,7 @@ from PIL import Image
 from supabase import create_client, Client
 from streamlit_calendar import calendar
 
-# --- CONFIGURAÇÃO CORRIGIDA ---
+# --- CONFIGURAÇÃO ---
 SUPABASE_URL = "https://aqurshrylulujbrxrhvn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxdXJzaHJ5bHVsdWpicnhyaHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTIzMTEsImV4cCI6MjA5MzY2ODMxMX0.mzy4S9b3H-PUt7nKLoH4k8ipUsXjj5CVWJbB8ZEiPJ0"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -28,7 +28,7 @@ with st.sidebar:
             try:
                 if opcao == "Criar Conta":
                     supabase.auth.sign_up({"email": email_i, "password": senha_i})
-                    st.success("Conta criada! Já pode entrar.")
+                    st.success("Conta criada! Mude para 'Login'.")
                 else:
                     res = supabase.auth.sign_in_with_password({"email": email_i, "password": senha_i})
                     if res.user:
@@ -108,36 +108,27 @@ with tabs[3]: # Perfil
         supabase.auth.update_user({"password": nova_senha})
         st.success("Atualizado!")
 
+# CORREÇÃO CRÍTICA NA LINHA ABAIXO:
 if st.session_state.is_admin:
-    with tabs: # Admin
+    with tabs[4]: # Admin (Aqui estava o erro, faltava o [4])
         st.subheader("👑 Painel de Gestão Master")
         
-        # --- TABELA DE CORES (O QUE TU PEDISTE) ---
         with st.expander("🎨 Gestão da Tabela de Cores"):
             st.write("Define a cor para cada colaboradora aqui:")
             c1, c2, c3 = st.columns([2,1,1])
-            
             nome_colab = c1.text_input("Nome da Colaboradora (Exato)")
             cor_escolhida = c2.color_picker("Escolher Cor", "#F8BBD0")
-            
             if c3.button("Gravar Cor"):
                 if nome_colab:
-                    supabase.table("configuracoes_cores").upsert({
-                        "colab": nome_colab, 
-                        "cor_hex": cor_escolhida
-                    }).execute()
+                    supabase.table("configuracoes_cores").upsert({"colab": nome_colab, "cor_hex": cor_escolhida}).execute()
                     st.success(f"Cor de {nome_colab} guardada!")
                     st.rerun()
                 else: st.error("Escreve o nome!")
 
-        # Exibição da Tabela Principal
         df_adm = ler_dados()
         if not df_adm.empty:
             st.write("### Produção Detalhada")
-            # Aplica as cores da tabela que criámos
             st.dataframe(df_adm.style.apply(aplicar_estilo_dinamico, axis=1), use_container_width=True)
-            
-            # Botão de Eliminar
             st.divider()
             id_del = st.number_input("ID para eliminar", min_value=0, step=1)
             if st.button("Eliminar Permanentemente"):
