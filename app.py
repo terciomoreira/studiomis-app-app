@@ -4,14 +4,14 @@ from PIL import Image
 from supabase import create_client, Client
 from streamlit_calendar import calendar
 
-# --- CONFIGURAÇÃO ---
+# --- CONFIGURAÇÃO CORRIGIDA ---
 SUPABASE_URL = "https://aqurshrylulujbrxrhvn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxdXJzaHJ5bHVsdWpicnhyaHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTIzMTEsImV4cCI6MjA5MzY2ODMxMX0.mzy4S9b3H-PUt7nKLoH4k8ipUsXjj5CVWJbB8ZEiPJ0"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Studio Miss SaaS", layout="wide")
 
-# Estilo SaaS
+# Estilo SaaS - Botões da Interface em Preto
 st.markdown("<style>.stApp { background-color: #FCE4EC; } .stButton>button { background-color: black; color: white; border-radius: 20px; }</style>", unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
@@ -105,24 +105,28 @@ if st.session_state.is_admin:
         with st.expander("🎨 Gestão da Tabela de Cores"):
             nome_c = st.text_input("Nome da Colaboradora (Exato)")
             
-            st.write("Cores Sugeridas (Clique num quadrado para selecionar):")
-            # PALETA DE CORES RÁPIDA
-            paleta = ["#F8BBD0", "#B3E5FC", "#C8E6C9", "#FFF9C4", "#D1C4E9", "#FFCCBC", "#E0E0E0"]
-            col_cores = st.columns(len(paleta))
+            st.write("Escolha uma cor da paleta:")
+            paleta = {
+                "Rosa": "#F8BBD0", "Azul": "#B3E5FC", "Verde": "#C8E6C9", 
+                "Amarelo": "#FFF9C4", "Roxo": "#D1C4E9", "Laranja": "#FFCCBC", "Cinza": "#E0E0E0"
+            }
             
-            # Escolha manual ou rápida
+            cols = st.columns(len(paleta))
             if 'cor_temp' not in st.session_state: st.session_state.cor_temp = "#F8BBD0"
             
-            for i, cor_hex in enumerate(paleta):
-                if col_cores[i].button(" ", key=f"btn_{i}", help=cor_hex):
-                    st.session_state.cor_temp = cor_hex
+            for i, (nome_cor, hex_cor) in enumerate(paleta.items()):
+                # Quadrados coloridos visuais
+                cols[i].markdown(f'<div style="background-color:{hex_cor}; width:30px; height:30px; border-radius:5px; border:1px solid black; margin:auto;"></div>', unsafe_allow_html=True)
+                if cols[i].button(nome_cor, key=f"btn_{nome_cor}"):
+                    st.session_state.cor_temp = hex_cor
             
-            cor_final = st.color_picker("Cor Selecionada (Pode ajustar aqui)", st.session_state.cor_temp)
+            st.markdown(f"Cor Selecionada: **{st.session_state.cor_temp}**")
+            cor_final = st.color_picker("Ajuste fino (opcional)", st.session_state.cor_temp)
             
-            if st.button("Gravar Cor na Tabela"):
+            if st.button("Gravar Cor na Tabela de Estilo"):
                 if nome_c:
                     supabase.table("configuracoes_cores").upsert({"colab": nome_c, "cor_hex": cor_final}).execute()
-                    st.success(f"Cor de {nome_c} definida!")
+                    st.success(f"Estilo de {nome_c} definido!")
                     st.rerun()
                 else: st.error("Insira o nome!")
 
@@ -132,4 +136,3 @@ if st.session_state.is_admin:
             id_del = st.number_input("ID para eliminar", min_value=0, step=1)
             if st.button("Eliminar"):
                 supabase.table("agendamentos").delete().eq("id", id_del).execute(); st.rerun()
-
