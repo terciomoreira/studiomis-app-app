@@ -4,15 +4,21 @@ from PIL import Image
 from supabase import create_client, Client
 from streamlit_calendar import calendar
 
-# --- CONFIGURAÇÃO CORRIGIDA ---
+# --- CONFIGURAÇÃO ---
 SUPABASE_URL = "https://aqurshrylulujbrxrhvn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxdXJzaHJ5bHVsdWpicnhyaHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTIzMTEsImV4cCI6MjA5MzY2ODMxMX0.mzy4S9b3H-PUt7nKLoH4k8ipUsXjj5CVWJbB8ZEiPJ0"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-st.set_page_config(page_title="Studio Miss SaaS", layout="wide")
+st.set_page_config(page_title="Studio Miss SaaS", layout="wide", initial_sidebar_state="expanded")
 
-# Estilo Rosa Studio Miss
-st.markdown("<style>.stApp { background-color: #FCE4EC; } .stButton>button { background-color: black; color: white; border-radius: 20px; }</style>", unsafe_allow_html=True)
+# --- ESTILO E CORES SaaS ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #FCE4EC; }
+    .stButton>button { background-color: black; color: white; border-radius: 20px; width: 100%; }
+    .stDataFrame { border-radius: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
 
@@ -29,22 +35,21 @@ with st.sidebar:
             try:
                 if opcao == "Criar Conta":
                     supabase.auth.sign_up({"email": email_i, "password": senha_i})
-                    st.success("Conta criada! Mude para 'Login' e entre.")
+                    st.success("Conta criada! Já pode entrar.")
                 else:
                     res = supabase.auth.sign_in_with_password({"email": email_i, "password": senha_i})
                     if res.user:
                         st.session_state.user = res.user
                         st.rerun()
-            except Exception as e:
-                st.error(f"Erro: {e}") # Isso vai mostrar o motivo real no ecrã
+            except Exception as e: st.error(f"Erro: {e}")
     else:
-        st.write(f"Conectado: **{st.session_state.user.email}**")
+        st.write(f"Olá, **{st.session_state.user.email}**")
         if st.button("Sair"):
             st.session_state.user = None
             st.rerun()
 
 if not st.session_state.user:
-    st.warning("Efetue o login para aceder.")
+    st.warning("Por favor, faça login para continuar.")
     st.stop()
 
 # --- REGRAS ADMIN ---
@@ -58,79 +63,78 @@ def ler_dados():
         return pd.DataFrame(res.data)
     except: return pd.DataFrame()
 
+# Função para colorir a tabela por colaborador (Estilo SaaS)
+def colorir_colaborador(row):
+    # Pode adicionar quantos colaboradores e cores quiser aqui
+    cores = {
+        'Michelle': 'background-color: #F8BBD0', # Rosa
+        'Ana': 'background-color: #B3E5FC',      # Azul Claro
+        'Beatriz': 'background-color: #C8E6C9',   # Verde Claro
+        'Carla': 'background-color: #FFF9C4'     # Amarelo Claro
+    }
+    return [cores.get(row['colab'], '')] * len(row)
+
 # --- INTERFACE ---
-tabs = st.tabs(["📅 Agenda", "📝 Registar Serviço", "📊 Relatórios", "⚙️ Admin"])
+titulos = ["📅 Agenda", "📝 Registar Serviço", "📊 Relatórios", "👤 Perfil"]
+if st.session_state.is_admin: titulos.append("⚙️ Admin")
+tabs = st.tabs(titulos)
 
 with tabs[0]: # Agenda
     df = ler_dados()
     if not df.empty:
-        evs = [{"title": f"{r['cliente']} ({r['colab']}) - {r.get('hora', '')}", "start": r['data_hora']} for _, r in df.iterrows()]
+        evs = [{"title": f"{r['cliente']} ({r['colab']})", "start": r['data_hora']} for _, r in df.iterrows()]
         calendar(events=evs, options={"headerToolbar": {"right": "dayGridMonth,timeGridWeek"}})
 
 with tabs[1]: # Registar
     with st.form("reg"):
         c1, c2 = st.columns(2)
-        cliente = c1.text_input("Nome da Cliente")
-        colaborador = c2.text_input("Nome do Colaborador")
-        
+        cli = c1.text_input("Cliente")
+        colab = c2.text_input("Colaborador (Nome Exato)")
         c3, c4 = st.columns(2)
-        data_atend = c3.date_input("Data")
-        hora_atend = c4.text_input("Hora (Ex: 14:30)")
-        
-        valor_total = st.number_input("Valor do Serviço (€)", min_value=0.0)
-        
-        if st.form_submit_button("Guardar Registro"):
-            comissao = round(valor_total * 0.70, 2)
-            liquido = round(valor_total - comissao, 2)
-            
+        dat = c3.date_input("Data")
+        hor = c4.text_input("Hora (Ex: 15:30)")
+        val = st.number_input("Valor (€)", min_value=0.0)
+        if st.form_submit_button("Guardar"):
+            com = round(val * 0.70, 2)
             supabase.table("agendamentos").insert({
-                "cliente": cliente, "colab": colaborador, "valor": valor_total,
-                "comissao": comissao, "liquido": liquido, "data_hora": str(data_atend),
-                "hora": hora_atend, "criado_por": st.session_state.user.email
+                "cliente": cli, "colab": colab, "valor": val, "comissao": com,
+                "liquido": val-com, "data_hora": str(dat), "hora": hor,
+                "criado_por": st.session_state.user.email
             }).execute()
-            st.success(f"Registado! Comissão (70%): {comissao}€ | Caixa: {liquido}€")
+            st.success("Registado com sucesso!")
 
-with tabs[2]: # Relatórios
+with tabs[2]: # Relatórios Colaborador
     df_rel = ler_dados()
     if not df_rel.empty:
         if not st.session_state.is_admin:
             df_rel = df_rel[df_rel['criado_por'] == st.session_state.user.email]
-        st.dataframe(df_rel, use_container_width=True)
-        st.metric("Minha Comissão", f"{df_rel['comissao'].sum():.2f}€")
+        st.dataframe(df_rel.style.apply(colorir_colaborador, axis=1), use_container_width=True)
+        st.metric("Minha Comissão Total", f"{df_rel['comissao'].sum():.2f}€")
 
-with tabs[3]:  # Admin
-    if st.session_state.is_admin:
-        st.subheader("👑 Painel de Gestão - Studio Miss")
+with tabs[3]: # Perfil (Gestão de Usuário)
+    st.subheader("👤 Minhas Configurações")
+    st.info("Aqui pode alterar a sua senha de acesso.")
+    nova_senha = st.text_input("Nova Senha", type="password")
+    if st.button("Atualizar Senha"):
+        try:
+            supabase.auth.update_user({"password": nova_senha})
+            st.success("Senha alterada com sucesso!")
+        except Exception as e: st.error(f"Erro: {e}")
+
+if st.session_state.is_admin:
+    with tabs[4]: # Admin
+        st.subheader("👑 Painel de Gestão Master")
         df_adm = ler_dados()
-        
         if not df_adm.empty:
-            st.write("### Fechamento Contabilístico")
-            st.metric("Total Líquido Caixa", f"{df_adm['liquido'].sum():.2f}€")
+            st.write("### Produção Detalhada por Cor")
+            # Tabela Admin Colorida
+            st.dataframe(df_adm.style.apply(colorir_colaborador, axis=1), use_container_width=True)
             
-            # EXIBIR A TABELA COMPLETA COM OS IDs
-            st.dataframe(df_adm, use_container_width=True)
-
-            # BOTÃO PARA BAIXAR EXCEL
-            csv = df_adm.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Baixar Excel para Contabilidade",
-                               data=csv, file_name="fechamento_studio_miss.csv", mime="text/csv")
-
+            st.metric("Total Líquido em Caixa", f"{df_adm['liquido'].sum():.2f}€")
+            
+            # Ferramenta de Eliminação
             st.divider()
-            
-            # ÁREA DE ELIMINAÇÃO
-            st.warning("⚠️ Zona de Exclusão")
-            id_del = st.number_input("Introduzir o ID (número) do serviço para apagar:", min_value=0, step=1)
-            
+            id_del = st.number_input("ID para eliminar", min_value=0, step=1)
             if st.button("Eliminar Permanentemente"):
-                if id_del > 0:
-                    try:
-                        # Comando que apaga no banco de dados Supabase
-                        supabase.table("agendamentos").delete().eq("id", id_del).execute()
-                        st.success(f"Serviço {id_del} apagado com sucesso!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao apagar: {e}")
-                else:
-                    st.info("Introduza um ID válido (o número que aparece na primeira coluna da tabela).")
-        else:
-            st.info("Ainda não existem dados registados para exibição.")
+                supabase.table("agendamentos").delete().eq("id", id_del).execute()
+                st.rerun()
