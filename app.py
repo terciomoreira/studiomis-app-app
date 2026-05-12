@@ -22,28 +22,21 @@ with st.sidebar:
     except: st.title("STUDIO MISS")
     if not st.session_state.user:
         opcao = st.radio("Acesso", ["Login", "Criar Conta"])
-        email_i = st.text_input("E-mail")
-        senha_i = st.text_input("Senha", type="password")
+        em, se = st.text_input("E-mail"), st.text_input("Senha", type="password")
         if st.button("Confirmar"):
             try:
                 if opcao == "Criar Conta":
-                    supabase.auth.sign_up({"email": email_i, "password": senha_i})
+                    supabase.auth.sign_up({"email": em, "password": se})
                     st.success("Conta criada! Mude para 'Login'.")
                 else:
-                    res = supabase.auth.sign_in_with_password({"email": email_i, "password": senha_i})
-                    if res.user:
-                        st.session_state.user = res.user
-                        st.rerun()
+                    res = supabase.auth.sign_in_with_password({"email": em, "password": se})
+                    if res.user: st.session_state.user = res.user; st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
     else:
         st.write(f"Conectado: **{st.session_state.user.email}**")
-        if st.button("Sair"):
-            st.session_state.user = None
-            st.rerun()
+        if st.button("Sair"): st.session_state.user = None; st.rerun()
 
-if not st.session_state.user:
-    st.warning("Efetue o login para aceder.")
-    st.stop()
+if not st.session_state.user: st.warning("Efetue o login."); st.stop()
 
 # --- REGRAS ADMIN ---
 LISTA_ADMINS = ["tercio.souza.moreira@gmail.com", "michelle@studiomiss.com"]
@@ -80,10 +73,8 @@ with tabs[0]: # Agenda
 with tabs[1]: # Registar
     with st.form("reg"):
         c1, c2 = st.columns(2)
-        cli = c1.text_input("Cliente")
-        fun = c2.text_input("Colaborador")
-        dat = st.date_input("Data")
-        hor = st.text_input("Hora (Ex: 14:30)")
+        cli, fun = c1.text_input("Cliente"), c2.text_input("Colaborador")
+        dat, hor = st.date_input("Data"), st.text_input("Hora (Ex: 14:30)")
         val = st.number_input("Valor (€)", min_value=0.0)
         if st.form_submit_button("Guardar"):
             com = round(val * 0.70, 2)
@@ -105,32 +96,40 @@ with tabs[3]: # Perfil
     st.subheader("Configurações")
     nova_senha = st.text_input("Nova Senha", type="password")
     if st.button("Atualizar Senha"):
-        supabase.auth.update_user({"password": nova_senha})
-        st.success("Atualizado!")
+        supabase.auth.update_user({"password": nova_senha}); st.success("Atualizado!")
 
-# CORREÇÃO CRÍTICA NA LINHA ABAIXO:
 if st.session_state.is_admin:
-    with tabs[4]: # Admin (Aqui estava o erro, faltava o [4])
+    with tabs[4]: # Admin
         st.subheader("👑 Painel de Gestão Master")
         
         with st.expander("🎨 Gestão da Tabela de Cores"):
-            st.write("Define a cor para cada colaboradora aqui:")
-            c1, c2, c3 = st.columns([2,1,1])
-            nome_colab = c1.text_input("Nome da Colaboradora (Exato)")
-            cor_escolhida = c2.color_picker("Escolher Cor", "#F8BBD0")
-            if c3.button("Gravar Cor"):
-                if nome_colab:
-                    supabase.table("configuracoes_cores").upsert({"colab": nome_colab, "cor_hex": cor_escolhida}).execute()
-                    st.success(f"Cor de {nome_colab} guardada!")
+            nome_c = st.text_input("Nome da Colaboradora (Exato)")
+            
+            st.write("Cores Sugeridas (Clique num quadrado para selecionar):")
+            # PALETA DE CORES RÁPIDA
+            paleta = ["#F8BBD0", "#B3E5FC", "#C8E6C9", "#FFF9C4", "#D1C4E9", "#FFCCBC", "#E0E0E0"]
+            col_cores = st.columns(len(paleta))
+            
+            # Escolha manual ou rápida
+            if 'cor_temp' not in st.session_state: st.session_state.cor_temp = "#F8BBD0"
+            
+            for i, cor_hex in enumerate(paleta):
+                if col_cores[i].button(" ", key=f"btn_{i}", help=cor_hex):
+                    st.session_state.cor_temp = cor_hex
+            
+            cor_final = st.color_picker("Cor Selecionada (Pode ajustar aqui)", st.session_state.cor_temp)
+            
+            if st.button("Gravar Cor na Tabela"):
+                if nome_c:
+                    supabase.table("configuracoes_cores").upsert({"colab": nome_c, "cor_hex": cor_final}).execute()
+                    st.success(f"Cor de {nome_c} definida!")
                     st.rerun()
-                else: st.error("Escreve o nome!")
+                else: st.error("Insira o nome!")
 
         df_adm = ler_dados()
         if not df_adm.empty:
-            st.write("### Produção Detalhada")
             st.dataframe(df_adm.style.apply(aplicar_estilo_dinamico, axis=1), use_container_width=True)
-            st.divider()
             id_del = st.number_input("ID para eliminar", min_value=0, step=1)
-            if st.button("Eliminar Permanentemente"):
-                supabase.table("agendamentos").delete().eq("id", id_del).execute()
-                st.rerun()
+            if st.button("Eliminar"):
+                supabase.table("agendamentos").delete().eq("id", id_del).execute(); st.rerun()
+
